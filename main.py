@@ -23,7 +23,7 @@ BASE_DIR = os.path.dirname(__file__)
 IMG_DIR = os.path.join(BASE_DIR, "imgs")
 PLAYER_DIR = os.path.join(IMG_DIR, "resized_ningen2025.png")
 BOSS_DIR = os.path.join(IMG_DIR, "mabuta.png")
-SOUNDS_DIR = os.path.join(IMG_DIR, "sounds")
+SOUNDS_DIR = os.path.join(BASE_DIR, "sounds")
 # ゲーム上の物体をしまう箱
 all_sprites = pygame.sprite.Group()
 # てきをしまう箱
@@ -31,13 +31,13 @@ teki_hako = pygame.sprite.Group()
 boss_group = pygame.sprite.Group()
 fireballs = pygame.sprite.Group()
 boss_fireballs = pygame.sprite.Group() 
-bgm_path = os.path.join(SOUNDS_DIR, "torima.mp3")
+bgm_path = os.path.join(SOUNDS_DIR, "bgm.mp3")
 
 pygame.init()
 pygame.mixer.init()
 screen = pygame.display.set_mode((YOKO, TATE))
 pygame.mixer.music.load(bgm_path)
-pygame.mixer.music.play(-1)  # -1で無限ループ
+pygame.mixer.music.play(-1)
 
 class Player(pygame.sprite.Sprite):
     def __init__(self):
