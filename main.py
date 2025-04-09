@@ -154,6 +154,11 @@ class Boss(pygame.sprite.Sprite):
             self.last_shot_time = current_time
         if self.life <= 0:
             self.kill()
+        self.rect.y += self.vx
+        if self.rect.y >= TATE:
+            self.vx *= -1
+        elif self.rect.y <= 0:
+            self.vx *= -1
 
 
 
