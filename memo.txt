@@ -1,0 +1,30 @@
+今日はボスを移動させてみるよ💋
+
+今日はこんな感じに移動させてみようか
+
+ボス上か下に移動する
+とりま上に移動すると仮定
+
+もし、ボスが画面の上端まできたらボスを下向きに移動させる(スピードを変える)
+もし、ボスが画面の下端まできたらボスを上向きに移動させる(スピードを変える)
+
+
+BGMをつけよう！
+BGMをしまうフォルダ(ディレクトリ)を作ろう！
+古代の力
+https://stackoverflow.com/questions/43845800/how-do-i-add-background-music-to-my-python-game
+
+
+Rule of thumb: Check documentation before Stack Overflow.
+
+https://www.pygame.org/docs/ref/mixer.html
+
+Use pygame.mixer.init() to initialize the mixer.
+
+Use pygame.mixer.music.load("file") to load music into the mixer.
+
+Use pygame.mixer.music.play(loops, start) to play the music loaded into the mixer.
+
+
+BGMをしまうフォルダを作ろう！
+どの音楽をBGMに使うのかを指定しよう！
