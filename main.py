@@ -1,55 +1,45 @@
-""""
-今日のにゅめー
-
-その０：デバッグ
-その１：ちょっとしたコツ
-teki_detekuru_kankaku
-saigo_teki_detekara_keika_jikan
-game_over
-の位置について
-その２：ファイヤーボールを修正(押しっぱなし問題の解決) ← これがむずいmemo.txtを見てみよう！
-その３：リスタート
 """
-
-
+今日やること
+1 BGMを流す(ふくしゅう)
+2 ボスキャラにライフゲージをつける(簡単)
+3 敵にもファイヤーボールを打たせる(ボスのプログラムをパクればいける)
+4 ボスキャラを倒したらクリア演出
+"""
 import pygame
 import os
 import random
+import math
 
 TATE = 900
 YOKO = 1200
 TITLE = "TAKOYAKI OISHI"
+
 BASE_DIR = os.path.dirname(__file__)
 IMG_DIR = os.path.join(BASE_DIR, "imgs")
 PLAYER_DIR = os.path.join(IMG_DIR, "resized_ningen2025.png")
 BOSS_DIR = os.path.join(IMG_DIR, "mabuta.png")
-SOUNDS_DIR = os.path.join(BASE_DIR, "sounds")
-# ゲーム上の物体をしまう箱
+SOUND_DIR = os.path.join(BASE_DIR, "sounds")
+BGM_PATH = os.path.join(IMG_DIR, "bgm.mp3")
+
 all_sprites = pygame.sprite.Group()
-# てきをしまう箱
 teki_hako = pygame.sprite.Group()
-boss_group = pygame.sprite.Group()
 fireballs = pygame.sprite.Group()
-boss_fireballs = pygame.sprite.Group() 
-bgm_path = os.path.join(SOUNDS_DIR, "bgm.mp3")
+boss_fireballs= pygame.sprite.Group()
 
 pygame.init()
 pygame.mixer.init()
+# パピプペポ
+#pygame.mixer.music.load()
 screen = pygame.display.set_mode((YOKO, TATE))
-pygame.mixer.music.load(bgm_path)
-pygame.mixer.music.play(-1)
 
 class Player(pygame.sprite.Sprite):
     def __init__(self):
-        pygame.sprite.Sprite.__init__(self)
+        super().__init__()
         self.image = pygame.Surface((32, 32))
-        self.gazou = pygame.image.load(PLAYER_DIR).convert()
-        self.image.blit(self.gazou, (0,0),(0,0,32,32))
-        iro = self.image.get_at((0,0))
-        self.image.set_colorkey(iro)
-        self.rect = self.image.get_rect()
-        self.rect.x = 100
-        self.rect.y = 100
+        gazou = pygame.image.load(PLAYER_DIR).convert()
+        self.image.blit(gazou, (0, 0), (0, 0, 32, 32))
+        self.image.set_colorkey(self.image.get_at((0, 0)))
+        self.rect   = self.image.get_rect(x=600, y=100)
         self.vx = 0
         self.vy = 0
         self.uteru = True
@@ -80,149 +70,197 @@ class Player(pygame.sprite.Sprite):
         else:
             self.uteru = True
 
-
-
-
 class Teki(pygame.sprite.Sprite):
     def __init__(self):
-        pygame.sprite.Sprite.__init__(self)
+        super().__init__()
         self.image = pygame.Surface((32, 32))
-        self.gazou = pygame.image.load(PLAYER_DIR).convert()
-        self.image.blit(self.gazou, (0, 0), (0, 0, 32, 32))
-        self.rect = self.image.get_rect()
-        self.rect.x = 10
-        self.rect.y = random.randint(0, 30)
+        gazou = pygame.image.load(PLAYER_DIR).convert()
+        self.image.blit(gazou, (0, 0), (0, 0, 32, 32))
+        self.rect = self.image.get_rect(x=10, y=random.randint(0, 30))
         self.vx = 1
-        self.vy = 0
 
     def update(self):
         self.rect.x += self.vx
-
 
 class Fireball(pygame.sprite.Sprite):
-    def __init__(self,x,y):
-        pygame.sprite.Sprite.__init__(self)
-        size = (16,16)
-        self.image = pygame.Surface(size)
-        self.image.fill((255,0,0))
+    def __init__(self, x, y):
+        super().__init__()
+        self.image = pygame.Surface((16, 16))
+        self.image.fill((255, 0, 0))
+        self.rect  = self.image.get_rect(center=(x, y))
         self.vx = -1
-        self.rect = self.image.get_rect(center=(x,y))
 
     def update(self):
         self.rect.x += self.vx
+        if self.rect.right < 0:
+            self.kill()
 
 
 class BossFireball(pygame.sprite.Sprite):
-    def __init__(self, x, y):
-        pygame.sprite.Sprite.__init__(self)
-        size = (16, 16)
-        self.image = pygame.Surface(size)
-        self.image.fill((0, 0, 255))  # 適宜見やすい色
+    def __init__(self, x, y, angle_deg, speed, color):
+        super().__init__()
+        self.image = pygame.Surface((10,10)); self.image.fill(color)
+        self.posx, self.posy = float(x), float(y)
+        rad  = math.radians(angle_deg)
+        self.vx = speed * math.cos(rad); self.vy = speed * math.sin(rad)
         self.rect = self.image.get_rect(center=(x, y))
-        self.vx = 6  # 右に飛ぶ
-
     def update(self):
-        self.rect.x += self.vx
-        # 画面外に出たら削除
-        if self.rect.left > YOKO or self.rect.right < 0:
-            self.kill()
+        self.posx += self.vx; self.posy += self.vy
+        self.rect.center = (int(self.posx), int(self.posy))
+        if (self.rect.right < 0 or self.rect.left > YOKO or
+            self.rect.bottom < 0 or self.rect.top > TATE): self.kill()
 
-# ボスを作ろう
-# ボスの画像はBOSS_DIR
-# ボスのパラメーター：サイズ、速さ、ライフ、
+
 class Boss(pygame.sprite.Sprite):
     def __init__(self):
-        pygame.sprite.Sprite.__init__(self)
-        size = (64,64)
-        self.image = pygame.Surface(size)
-        self.image.fill((255,0,0))
-        self.vx = -1
-        self.rect = self.image.get_rect()
-        self.rect.x = 400
-        self.rect.y = 400
-        self.life = 50
-        self.vx = 3
-        self.last_shot_time = 0
-        self.shot_interval = 2.0
+        super().__init__()
+        self.image = pygame.Surface((64, 64))
+        self.rect  = self.image.get_rect(center=(100, 450))   # ← 左端に配置
+        self.life  = 50
+        self.bullet_speed = 1       # ← 全弾共通スピード
 
+        self.patterns = [
+            {"dur":5,"bcol":(255,32,32),"fcol":(0,128,255),"func":self.p_radial},
+            {"dur":4,"bcol":(32,255,32),"fcol":(255,215,0),"func":self.p_fiveway},
+            {"dur":6,"bcol":(200,32,255),"fcol":(255,64,255),"func":self.p_sine}
+        ]
+        self.idx   = 0
+        self.start = pygame.time.get_ticks()/1000
+        self.spin  = 0
+
+    # 0. 回転花火
+    def p_radial(self, now, col):
+        if not hasattr(self, "nt0"): self.nt0 = 0
+        if now >= self.nt0:
+            for ang in range(0, 360, 20):
+                bf = BossFireball(self.rect.centerx, self.rect.centery,
+                                  ang + self.spin, self.bullet_speed, col)
+                boss_fireballs.add(bf); all_sprites.add(bf)
+            self.spin = (self.spin + 12) % 360
+            self.nt0  = now + 1.0
+
+    # 1. 5way 狙撃
+    def p_fiveway(self, now, col):
+        if not hasattr(self, "nt1"): self.nt1 = 0
+        if now >= self.nt1:
+            dx = player.rect.centerx - self.rect.centerx
+            dy = player.rect.centery - self.rect.centery
+            base = math.degrees(math.atan2(dy, dx))
+            for off in (-15, -7, 0, 7, 15):
+                bf = BossFireball(self.rect.centerx, self.rect.centery,
+                                  base + off, self.bullet_speed + 1, col)
+                boss_fireballs.add(bf); all_sprites.add(bf)
+            self.nt1 = now + 0.8
+
+    # 2. サインストリーム（← 角度を 0° に修正）
+    def p_sine(self, now, col):
+        if int(now * 10) % 3 == 0:                # 0.3 秒ごと
+            bf = BossFireball(self.rect.centerx, self.rect.centery,
+                              0,                 # → 右向き
+                              self.bullet_speed, col)
+            bf.sy = bf.posy
+            bf.ph = now
+            bf.update = lambda b=bf: sine_update(b)
+            boss_fireballs.add(bf); all_sprites.add(bf)
+
+    # 共通 update
     def update(self):
-        current_time = pygame.time.get_ticks() / 1000
-        if current_time - self.last_shot_time > self.shot_interval:
-            bf = BossFireball(self.rect.centerx, self.rect.centery)
-            boss_fireballs.add(bf)
-            all_sprites.add(bf)
-            self.last_shot_time = current_time
-        if self.life <= 0:
-            self.kill()
-        self.rect.y += self.vx
-        if self.rect.y >= TATE:
-            self.vx *= -1
-        elif self.rect.y <= 0:
-            self.vx *= -1
+        now = pygame.time.get_ticks() / 1000
+        pat = self.patterns[self.idx]
+        self.image.fill(pat["bcol"])
+        pat["func"](now, pat["fcol"])
+        if now - self.start > pat["dur"]:
+            self.idx   = (self.idx + 1) % len(self.patterns)
+            self.start = now
+            for attr in ("nt0", "nt1"):
+                if hasattr(self, attr):
+                    delattr(self, attr)
 
 
+def draw_boss_life(screen, boss):
+    BAR_W, BAR_H = boss.rect.width, 6
+    x, y = boss.rect.left, boss.rect.bottom + 10
+    pygame.draw.rect(screen, (80, 80, 80), (x, y, BAR_W, BAR_H))
 
+    ratio = max(0, boss.life / boss.max_life)
+    hp_w  = int(BAR_W * ratio)
+
+    if ratio >= .5:
+        t = (ratio - .5) * 2
+        col = (int(255 * (1 - t)), 255, 0)
+    else:
+        t = ratio * 2
+        col = (255, int(255 * t), 0)
+    pygame.draw.rect(screen, col, (x, y, hp_w, BAR_H))
+
+def sine_update(b):
+    b.posx+=b.vx
+    b.posy=b.sy+50*math.sin(b.posx/60+b.ph)
+    b.rect.center=(int(b.posx),int(b.posy))
+    if (b.rect.right<0 or b.rect.left>YOKO or
+        b.rect.bottom<0 or b.rect.top>TATE): b.kill()
 
 player = Player()
+all_sprites.add(player)
 boss = Boss()
 all_sprites.add(boss)
-all_sprites.add(player)
-teki_detekuru_kankaku = 0
-saigo_teki_detekara_keika_jikan = 0
 
+clear = False 
 game_over = False
-
+last_enemy_time = 0
 kurikaeshi = True
+music_done = False
 while kurikaeshi:
     current_time = pygame.time.get_ticks() / 1000
+
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             kurikaeshi = False
 
-    teki_detekuru_kankaku = 1.5
-    if current_time - saigo_teki_detekara_keika_jikan > teki_detekuru_kankaku:
-        teki = Teki()
-        teki_hako.add(teki)
-        saigo_teki_detekara_keika_jikan = current_time
-    atari = pygame.sprite.spritecollide(player, teki_hako, dokill=True)
-    if atari:
-        game_over = True
+    if not game_over:
+        if current_time - last_enemy_time > 1.5:
+            teki = Teki()
+            teki_hako.add(teki)
+            last_enemy_time = current_time
 
-    boss_fb_hit_player = pygame.sprite.spritecollide(player, boss_fireballs, dokill=True)
-    if boss_fb_hit_player:
-        game_over = True
+        if pygame.sprite.spritecollide(player, teki_hako, dokill=True):
+            game_over = True
+        if pygame.sprite.spritecollide(player, boss_fireballs, dokill=True):
+            game_over = True
 
+        if boss.alive():
+            hits = pygame.sprite.spritecollide(boss, fireballs, dokill=True)
+            if hits:
+                boss.life -= len(hits)
+                if boss.life <= 0:
+                    boss.kill()
 
-    boss_fire_hit = pygame.sprite.spritecollide(boss, fireballs, dokill=True)
-    if boss_fire_hit:
-        boss.life -= len(boss_fire_hit)
-        print("boss life:", boss.life)
-        if boss.life <= 0:
-            boss.kill()  # ボス消滅
+        all_sprites.update()
+        teki_hako.update()
 
-    
+    if clear and not music_done:
+        print("ゲームくりあ")
+
+    screen.fill((0, 0, 0))
+    all_sprites.draw(screen)
+    teki_hako.draw(screen)
+    if boss.alive():
+        # ここに書く！
+        print("生きてるよ〜ん")
 
     if game_over:
-        font = pygame.font.SysFont(None, 74)
-        text = font.render('IKEMEN TAKAHASHI', True, (255, 255, 255))
-        text_rect = text.get_rect(center=(YOKO / 2, TATE / 2))
-        screen.blit(text, text_rect)
-        font_small = pygame.font.SysFont(None, 24)
-        restart_text = font_small.render('Press Space to Restart', True, (255, 255, 255))
-        restart_rect = restart_text.get_rect(center=(YOKO / 2, TATE / 2 + 70))
-        screen.blit(restart_text, restart_rect)
-        # その３：リスタートモード
-        # リスタート判定
-        # pygame.key.get_pressed()でボタンの状態チェック
-        # もしもスペースが押されていたら敵の箱とキャラクターを入れる箱を空っぽにする(箱.empty())
-        # プレイヤーを初期化する
-        # プレイヤーを箱に追加する
-        # ゲームオーバーのフラッグをFalseにする
-    else:
-        screen.fill((0, 0, 0))
-        all_sprites.update()
-        all_sprites.draw(screen)
-        teki_hako.update()
-        teki_hako.draw(screen)
+        f_big = pygame.font.SysFont(None, 74)
+        f_small = pygame.font.SysFont(None, 24)
+
+        txt_big = f_big.render('IKEMEN TAKAHASHI', True, (255, 255, 255))
+        rect_big = txt_big.get_rect(center=(YOKO/2, TATE/2))
+        screen.blit(txt_big, rect_big)
+
+        txt_small = f_small.render('Press Space to Restart', True, (255, 255, 255))
+        rect_small = txt_small.get_rect(center=(YOKO/2, TATE/2 + 70))
+        screen.blit(txt_small, rect_small)
+
+
     pygame.display.flip()
+
 pygame.quit()
