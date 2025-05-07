@@ -19,17 +19,19 @@ IMG_DIR = os.path.join(BASE_DIR, "imgs")
 PLAYER_DIR = os.path.join(IMG_DIR, "resized_ningen2025.png")
 BOSS_DIR = os.path.join(IMG_DIR, "mabuta.png")
 SOUND_DIR = os.path.join(BASE_DIR, "sounds")
-BGM_PATH = os.path.join(IMG_DIR, "bgm.mp3")
+BGM_PATH = os.path.join(SOUND_DIR, "bgm.mp3")
 
 all_sprites = pygame.sprite.Group()
 teki_hako = pygame.sprite.Group()
 fireballs = pygame.sprite.Group()
-boss_fireballs= pygame.sprite.Group()
+boss_fireballs = pygame.sprite.Group()
+teki_fireballs = pygame.sprite.Group()
 
 pygame.init()
 pygame.mixer.init()
 # パピプペポ
-#pygame.mixer.music.load()
+pygame.mixer.music.load(BGM_PATH)
+pygame.mixer.music.play(-1)
 screen = pygame.display.set_mode((YOKO, TATE))
 
 class Player(pygame.sprite.Sprite):
@@ -70,27 +72,60 @@ class Player(pygame.sprite.Sprite):
         else:
             self.uteru = True
 
+class TekiFireball(pygame.sprite.Sprite):
+    def __init__(self, x, y):
+        pygame.sprite.Sprite.__init__(self)
+        size = (16, 16)
+        self.image = pygame.Surface(size)
+        self.image.fill((255, 0, 255))  # RGB
+        self.rect = self.image.get_rect(center=(x, y))
+        self.vx = 6  # 右に飛ぶ
+
+    def update(self):
+        self.rect.x += self.vx
+        # 画面外に出たら削除
+        if self.rect.left > YOKO or self.rect.right < 0:
+            self.kill()
+
 class Teki(pygame.sprite.Sprite):
     def __init__(self):
         super().__init__()
         self.image = pygame.Surface((32, 32))
         gazou = pygame.image.load(PLAYER_DIR).convert()
         self.image.blit(gazou, (0, 0), (0, 0, 32, 32))
-        self.rect = self.image.get_rect(x=10, y=random.randint(0, 30))
+        self.rect = self.image.get_rect(x=10, y=random.randint(0, 600))
         self.vx = 1
+        self.last_shot_time = 0
+        self.shot_interval = 2
 
     def update(self):
         self.rect.x += self.vx
+        current_time = pygame.time.get_ticks() / 1000
+        if current_time - self.last_shot_time > self.shot_interval:
+            bf = TekiFireball(self.rect.centerx, self.rect.centery)
+            teki_fireballs.add(bf)
+            all_sprites.add(bf)
+            self.last_shot_time = current_time
 
 class Fireball(pygame.sprite.Sprite):
     def __init__(self, x, y):
         super().__init__()
-        self.image = pygame.Surface((16, 16))
-        self.image.fill((255, 0, 0))
+        self.image = pygame.Surface((1, 1000))
+        self.image.fill((255, 255, 0))
         self.rect  = self.image.get_rect(center=(x, y))
-        self.vx = -1
+        self.vx = -5
 
     def update(self):
+        hit = pygame.sprite.spritecollide(self,teki_hako,dokill=True)
+        
+        if hit:
+            self.kill()
+        hit_fireball = pygame.sprite.spritecollide(self,teki_fireballs, dokill=True)
+        if hit_fireball:
+            self.kill()
+        hit_boss_fireball = pygame.sprite.spritecollide(self,boss_fireballs,dokill=True)
+        if hit_boss_fireball:
+            self.kill()
         self.rect.x += self.vx
         if self.rect.right < 0:
             self.kill()
@@ -127,6 +162,7 @@ class Boss(pygame.sprite.Sprite):
         self.idx   = 0
         self.start = pygame.time.get_ticks()/1000
         self.spin  = 0
+        self.max_life = 50
 
     # 0. 回転花火
     def p_radial(self, now, col):
@@ -205,7 +241,7 @@ all_sprites.add(player)
 boss = Boss()
 all_sprites.add(boss)
 
-clear = False 
+clear = False
 game_over = False
 last_enemy_time = 0
 kurikaeshi = True
@@ -245,7 +281,7 @@ while kurikaeshi:
     all_sprites.draw(screen)
     teki_hako.draw(screen)
     if boss.alive():
-        # ここに書く！
+        draw_boss_life(screen,boss)
         print("生きてるよ〜ん")
 
     if game_over:
