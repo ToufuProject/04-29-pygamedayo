@@ -1,30 +1,67 @@
-今日はボスを移動させてみるよ💋
+- ボスのライフを表示
 
-今日はこんな感じに移動させてみようか
+def draw_boss_life(screen, boss):
+    BAR_W, BAR_H = boss.rect.width, 6
+    x, y = boss.rect.left, boss.rect.bottom + 10
+    pygame.draw.rect(screen, (80, 80, 80), (x, y, BAR_W, BAR_H))
 
-ボス上か下に移動する
-とりま上に移動すると仮定
+    ratio = max(0, boss.life / boss.max_life)
+    hp_w  = int(BAR_W * ratio)
 
-もし、ボスが画面の上端まできたらボスを下向きに移動させる(スピードを変える)
-もし、ボスが画面の下端まできたらボスを上向きに移動させる(スピードを変える)
-
-
-BGMをつけよう！
-BGMをしまうフォルダ(ディレクトリ)を作ろう！
-古代の力
-https://stackoverflow.com/questions/43845800/how-do-i-add-background-music-to-my-python-game
-
-
-Rule of thumb: Check documentation before Stack Overflow.
-
-https://www.pygame.org/docs/ref/mixer.html
-
-Use pygame.mixer.init() to initialize the mixer.
-
-Use pygame.mixer.music.load("file") to load music into the mixer.
-
-Use pygame.mixer.music.play(loops, start) to play the music loaded into the mixer.
+    if ratio >= .5:
+        t = (ratio - .5) * 2
+        col = (int(255 * (1 - t)), 255, 0)
+    else:
+        t = ratio * 2
+        col = (255, int(255 * t), 0)
+    pygame.draw.rect(screen, col, (x, y, hp_w, BAR_H))
 
 
-BGMをしまうフォルダを作ろう！
-どの音楽をBGMに使うのかを指定しよう！
+
+
+- 敵にファイヤーボールを打たせるための参考プログラム
+class BossFireball(pygame.sprite.Sprite):
+    def __init__(self, x, y):
+        pygame.sprite.Sprite.__init__(self)
+        size = (16, 16)
+        self.image = pygame.Surface(size)
+        self.image.fill((0, 0, 255))  # 適宜見やすい色
+        self.rect = self.image.get_rect(center=(x, y))
+        self.vx = 6  # 右に飛ぶ
+
+    def update(self):
+        self.rect.x += self.vx
+        # 画面外に出たら削除
+        if self.rect.left > YOKO or self.rect.right < 0:
+            self.kill()
+
+# ボスを作ろう
+# ボスの画像はBOSS_DIR
+# ボスのパラメーター：サイズ、速さ、ライフ、
+class Boss(pygame.sprite.Sprite):
+    def __init__(self):
+        pygame.sprite.Sprite.__init__(self)
+        size = (64,64)
+        self.image = pygame.Surface(size)
+        self.image.fill((255,0,0))
+        self.vx = -1
+        self.rect = self.image.get_rect()
+        self.rect.x = 400
+        self.rect.y = 400
+        self.life = 50
+        self.vx = 3
+        self.last_shot_time = 0
+        self.shot_interval = 2.0
+
+    def update(self):
+        current_time = pygame.time.get_ticks() / 1000
+        if current_time - self.last_shot_time > self.shot_interval:
+            bf = BossFireball(self.rect.centerx, self.rect.centery)
+            boss_fireballs.add(bf)
+            all_sprites.add(bf)
+            self.last_shot_time = current_time
+        if self.life <= 0:
+            self.kill()
+
+
+# bossのらいふが0になったらゲームクリア
